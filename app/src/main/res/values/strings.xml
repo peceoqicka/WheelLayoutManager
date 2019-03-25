@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">WheelLayoutManager</string>
+    <string name="int_to_str">%1$d</string>
+    <string name="year">年</string>
+    <string name="month">月</string>
+    <string name="day">日</string>
+</resources>

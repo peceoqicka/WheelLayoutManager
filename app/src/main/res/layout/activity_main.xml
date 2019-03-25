@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <variable
+            name="model"
+            type="com.peceoqicka.demo.wheelayoutmanager.index.ViewModel" />
+    </data>
+
+    <android.support.constraint.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF"
+        tools:context=".MainActivity">
+
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/rv_main_year"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/px_700"
+            android:background="#F5F5F5"
+            android:layoutManager="@{model.yearLayoutManager}"
+            app:adapter="@{model.yearAdapter}"
+            app:itemDecoration="@{model.yearItemDecoration}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/rv_main_month"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/rv_main_month"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/px_700"
+            android:background="#F5F5F5"
+            android:layoutManager="@{model.monthLayoutManager}"
+            app:adapter="@{model.monthAdapter}"
+            app:itemDecoration="@{model.monthItemDecoration}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/rv_main_day"
+            app:layout_constraintStart_toEndOf="@+id/rv_main_year"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/rv_main_day"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/px_700"
+            android:background="#F5F5F5"
+            android:layoutManager="@{model.dayLayoutManager}"
+            app:adapter="@{model.dayAdapter}"
+            app:itemDecoration="@{model.dayItemDecoration}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/rv_main_month"
+            app:layout_constraintTop_toTopOf="parent" />
+    </android.support.constraint.ConstraintLayout>
+</layout>
