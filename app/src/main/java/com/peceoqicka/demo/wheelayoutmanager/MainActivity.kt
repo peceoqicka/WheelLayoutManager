@@ -4,6 +4,7 @@ import android.databinding.DataBindingUtil
 import android.databinding.ObservableArrayList
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import android.support.v7.widget.LinearLayoutManager
 import com.peceoqicka.demo.wheelayoutmanager.databinding.ActivityMainBinding
 import com.peceoqicka.demo.wheelayoutmanager.index.ItemAdapter
 import com.peceoqicka.demo.wheelayoutmanager.index.ItemViewModel

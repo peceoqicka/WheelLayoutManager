@@ -30,6 +30,9 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
     var draggingStartListener: (() -> Unit)? = null
     val selection: Int
         get() = selectedPosition
+    /**
+     * 居中的item的上边距
+     */
     val selectionTop: Int
         get() = requiredMarginTop
     val itemHeight: Int
@@ -128,7 +131,7 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
             }
             measureChild(child, 0, 0)
             val decoratedWidth = getDecoratedMeasuredWidth(child)
-            val childBottom = childTop + requiredItemHeight
+            val childBottom = childTop + getDecoratedMeasuredHeight(child)
 
             if ((childTop < 0 && childBottom <= 0) || (childTop >= height && childBottom > height)) {
                 removeAndRecycleView(child, recycler)
@@ -176,8 +179,9 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
             return
         }
         stopScrollAnimation()
-        val scrollDistance = (getRequiredScrollOffset(position) - scrollOffsetY) * 1f
-        scrollValueAnimator = ValueAnimator.ofFloat(0f, scrollDistance).setDuration(300)
+        val scrollDistance = (getRequiredScrollOffset(position) - scrollOffsetY)
+        //既然定位都是Int，那动画值的变化也要用Int，用Float就会出现滑动停止后偏离几个像素的尴尬场面
+        scrollValueAnimator = ValueAnimator.ofInt(0, scrollDistance).setDuration(300)
         scrollValueAnimator.addUpdateListener(ScrollAnimatorUpdateListener { deltaValue ->
             updateScrollOffsetY(deltaValue, scrollOffsetY, itemCount)
             requestLayout()
@@ -197,7 +201,7 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
     }
 
     override fun scrollToPosition(position: Int) {
-        if (position in 0..(itemCount - 1)) {
+        if (position in 0 until itemCount) {
             val distance = getRequiredScrollOffset(position) - scrollOffsetY
             updateScrollOffsetY(distance, scrollOffsetY, itemCount)
             requestLayout()
@@ -206,18 +210,18 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
     }
 
     override fun smoothScrollToPosition(recyclerView: RecyclerView, state: RecyclerView.State, position: Int) {
-        if (position in 0..(itemCount - 1)) {
+        if (position in 0 until itemCount) {
             startScrollAnimation(position, state.itemCount)
         }
     }
 
     private class ScrollAnimatorUpdateListener(val valueUpdated: (Int) -> Unit) :
         ValueAnimator.AnimatorUpdateListener {
-        private var lastValue: Float = 0f
+        private var lastValue: Int = 0
         override fun onAnimationUpdate(animation: ValueAnimator) {
-            val currentValue = animation.animatedValue as Float
-            if (lastValue != 0f) {
-                valueUpdated((currentValue - lastValue).toInt())
+            val currentValue = animation.animatedValue as Int
+            if (currentValue != 0) {
+                valueUpdated(currentValue - lastValue)
             }
             lastValue = currentValue
         }
