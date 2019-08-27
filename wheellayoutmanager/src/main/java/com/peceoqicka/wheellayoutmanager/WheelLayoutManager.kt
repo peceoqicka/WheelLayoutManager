@@ -13,11 +13,18 @@ import android.view.View
  *      desc    :
  * </pre>
  */
-class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutManager() {
+class WheelLayoutManager(private val visibleCount: Int, private val infinity: Boolean = false) :
+    RecyclerView.LayoutManager() {
     //通过visibleCount计算求得的一屏能显示的item高度
     private var requiredItemHeight: Int = 0
     //使第一个item垂直于整个控件居中对齐的上边距
     private var requiredMarginTop: Int = 0
+    //使第一个item垂直于整个控件居中对齐需要的补充Item数量
+    private var requiredSpaceCount: Int = 0
+    private var posLayoutHead: Int = 0
+    private var posLayoutTail: Int = 0
+    private var negLayoutHead: Int = 0
+    private var negLayoutTail: Int = 0
     private var scrollOffsetY: Int = 0
     private var canScrollVertically: Boolean = false
     private lateinit var scrollValueAnimator: ValueAnimator
@@ -42,6 +49,7 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
         if (visibleCount % 2 != 1 || visibleCount < 1) {
             throw IllegalArgumentException("visible count can only be set to odd number")
         }
+        requiredSpaceCount = (visibleCount - 1) / 2
     }
 
     override fun isAutoMeasureEnabled(): Boolean {
@@ -77,13 +85,19 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
         return canScrollVertically
     }
 
+    private fun calculateParams() {
+        requiredItemHeight = height / visibleCount
+        requiredMarginTop = requiredItemHeight * requiredSpaceCount
+    }
+
     override fun scrollVerticallyBy(dy: Int, recycler: RecyclerView.Recycler, state: RecyclerView.State): Int {
-        //<0 :向下滚动，即手指拖动页面往上滑  >0 :向上滚动，与前者相反
-        //println("scrollVerticallyBy : $dy")
+        //<0 :手指往下滑  >0 :手指往上滑
         if (state.itemCount == 0) {
             return 0
         }
+        calculateParams()
         detachAndScrapAttachedViews(recycler)
+
         val lastOffset = scrollOffsetY
         updateScrollOffsetY(dy, lastOffset, state.itemCount)
         //重新布局
@@ -94,22 +108,31 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
     private fun updateScrollOffsetY(dy: Int, lastOffsetY: Int, itemCount: Int) {
         scrollOffsetY += dy
         val childrenHeight = itemCount * requiredItemHeight
-        val overflowHeight = childrenHeight - height
-        if (scrollOffsetY < 0) {
-            scrollOffsetY = 0
-        } else if (scrollOffsetY > overflowHeight + requiredMarginTop * 2) {
-            scrollOffsetY = if (overflowHeight > 0) overflowHeight + requiredMarginTop * 2 else lastOffsetY
+        if (isInfiniteScrollEnabled(itemCount)) {
+            val negLenThreshold = (requiredSpaceCount + 1) * requiredItemHeight
+            val posLenThreshold = childrenHeight - negLenThreshold
+            val mod = scrollOffsetY % requiredItemHeight
+            if (scrollOffsetY > posLenThreshold) {
+                scrollOffsetY = -negLenThreshold + mod
+            } else if (scrollOffsetY <= -negLenThreshold) {
+                scrollOffsetY = posLenThreshold - mod
+            }
+        } else {
+            val overflowHeight = childrenHeight - height
+            if (scrollOffsetY < 0) {
+                scrollOffsetY = 0
+            } else if (scrollOffsetY > overflowHeight + requiredMarginTop * 2) {
+                scrollOffsetY = if (overflowHeight > 0) overflowHeight + requiredMarginTop * 2 else lastOffsetY
+            }
         }
     }
 
     override fun onLayoutChildren(recycler: RecyclerView.Recycler, state: RecyclerView.State) {
-        requiredItemHeight = height / visibleCount
-        requiredMarginTop = requiredItemHeight * 2
-
         if (state.itemCount == 0) {
             removeAndRecycleAllViews(recycler)
             return
         }
+        calculateParams()
         //暂时分离和回收全部有效的Item
         detachAndScrapAttachedViews(recycler)
 
@@ -119,26 +142,132 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
         layoutChildren(recycler, state)
     }
 
+    /**
+     * 布局所有子View,如果是无限循环模式,则需要负序列布局
+     */
     private fun layoutChildren(recycler: RecyclerView.Recycler, state: RecyclerView.State) {
-        for (i in (0 until state.itemCount)) {
-            val childTop = i * requiredItemHeight + requiredMarginTop - scrollOffsetY
-            val child = recycler.getViewForPosition(i)
-            addView(child)
-            if (child.layoutParams.height <= 0) {
-                val calibratedLayoutParams = child.layoutParams
-                calibratedLayoutParams.height = requiredItemHeight
-                child.layoutParams = calibratedLayoutParams
-            }
-            measureChild(child, 0, 0)
-            val decoratedWidth = getDecoratedMeasuredWidth(child)
-            val childBottom = childTop + getDecoratedMeasuredHeight(child)
-
-            if ((childTop < 0 && childBottom <= 0) || (childTop >= height && childBottom > height)) {
-                removeAndRecycleView(child, recycler)
-            } else {
+        val (headIndex, tailIndex) = getLayoutRange(state.itemCount)
+        posLayoutHead = if (headIndex >= 0) headIndex else 0
+        posLayoutTail = if (tailIndex >= 0) tailIndex else 0
+        if (headIndex >= 0 && tailIndex >= 0) {
+            for (i in (headIndex..tailIndex)) {
+                val child = getItemView(recycler, i)
+                val decoratedWidth = getDecoratedMeasuredWidth(child)
+                val childTop = getLayoutTop(i)
+                val childBottom = childTop + getDecoratedMeasuredHeight(child)
                 layoutDecorated(child, 0, childTop, decoratedWidth, childBottom)
             }
         }
+        if (isInfiniteScrollEnabled(state.itemCount)) {
+            val (negHeadIndex, negTailIndex) = getNegativeLayoutRange(state.itemCount)
+            negLayoutHead = if (negHeadIndex >= 0) negHeadIndex else 0
+            negLayoutTail = if (negTailIndex >= 0) negTailIndex else 0
+            if (negHeadIndex >= 0 && negTailIndex >= 0) {
+                for (i in (negTailIndex downTo negHeadIndex)) {
+                    val child = getItemView(recycler, i)
+                    val decoratedWidth = getDecoratedMeasuredWidth(child)
+                    val childTop = getNegativeLayoutTop(i, state.itemCount)
+                    val childBottom = childTop + getDecoratedMeasuredHeight(child)
+                    layoutDecorated(child, 0, childTop, decoratedWidth, childBottom)
+                }
+            }
+        }
+
+        val removalList = ArrayList<RecyclerView.ViewHolder>()
+        removalList.addAll(recycler.scrapList)
+        removalList.forEach { holder ->
+            removeView(holder.itemView)
+            recycler.recycleView(holder.itemView)
+        }
+    }
+
+    private fun getItemView(recycler: RecyclerView.Recycler, position: Int): View {
+        val child = recycler.getViewForPosition(position)
+        addView(child)
+        if (child.layoutParams.height <= 0) {
+            val calibratedLayoutParams = child.layoutParams
+            calibratedLayoutParams.height = requiredItemHeight
+            child.layoutParams = calibratedLayoutParams
+        }
+        measureChild(child, 0, 0)
+        return child
+    }
+
+    private fun isLayoutInVisibleArea(top: Int, bottom: Int): Boolean {
+        return (top in (0..height)) || (bottom in (0..height))
+    }
+
+    /**
+     * 获取指定Item在特定scrollOffsetY值时的顶部位置
+     *
+     * @param index Item在适配器中的Index值
+     */
+    private fun getLayoutTop(index: Int): Int {
+        return index * requiredItemHeight + requiredMarginTop - scrollOffsetY
+    }
+
+    /**
+     * 获取指定Item在特定scrollOffsetY值时的顶部位置(负序列定位规则)
+     *
+     * @param index Item在适配器中的Index值
+     * @param itemCount 适配器中的itemCount
+     */
+    private fun getNegativeLayoutTop(index: Int, itemCount: Int): Int {
+        return (requiredSpaceCount - 1) * requiredItemHeight - scrollOffsetY - (itemCount - 1 - index) * requiredItemHeight
+    }
+
+    private fun getLayoutRange(itemCount: Int): Pair<Int, Int> {
+        var headIndex = -1
+        var tailIndex = -1
+        for (i in (0 until itemCount)) {
+            val childTop = getLayoutTop(i)
+            val childBottom = childTop + requiredItemHeight
+            if ((childTop in 0..height) || childBottom in 0..height) {
+                headIndex = i
+                break
+            }
+        }
+        for (i in (headIndex + 1 until itemCount)) {
+            val childTop = getLayoutTop(i)
+            if (childTop > height) {
+                tailIndex = i - 1
+                break
+            }
+        }
+        if (tailIndex < 0) {
+            tailIndex = itemCount - 1
+        }
+        return headIndex to tailIndex
+    }
+
+    private fun getNegativeLayoutRange(itemCount: Int): Pair<Int, Int> {
+        var headIndex = -1
+        var tailIndex = -1
+        for (i in (itemCount - 1 downTo 0)) {
+            val childTop = getNegativeLayoutTop(i, itemCount)
+            val childBottom = childTop + requiredItemHeight
+            if (isLayoutInVisibleArea(childTop, childBottom)) {
+                tailIndex = i
+                break
+            }
+        }
+
+        for (i in (tailIndex - 1 downTo 0)) {
+            val childTop = getNegativeLayoutTop(i, itemCount)
+            val childBottom = childTop + requiredItemHeight
+            if (childBottom < 0) {
+                headIndex = i + 1
+                break
+            }
+        }
+        if (headIndex < 0) {
+            headIndex = 0
+        }
+        return headIndex to tailIndex
+    }
+
+    private fun isInfiniteScrollEnabled(itemCount: Int): Boolean {
+        return (visibleCount < itemCount) && infinity
     }
 
     override fun onScrollStateChanged(state: Int) {
@@ -149,8 +278,44 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
                 stopScrollAnimation()
             }
             RecyclerView.SCROLL_STATE_IDLE -> {
-                startScrollAnimation(findClosestItemPosition(), itemCount)
+                createScrollAnimation()
             }
+        }
+    }
+
+    private fun createScrollAnimation() {
+        //如果是无限循环模式，则在判断选中位置时需要考虑scrollOffset分界点的问题
+        if (isInfiniteScrollEnabled(itemCount)) {
+            val negLenThreshold = (requiredSpaceCount + 1) * requiredItemHeight
+            val posLenThreshold = itemCount * requiredItemHeight - negLenThreshold
+            val criticalValue = -requiredItemHeight / 2
+            var targetPosition = -1
+            var minDistance = Int.MAX_VALUE
+            if (scrollOffsetY > -negLenThreshold && scrollOffsetY < criticalValue) {
+                //正负序列混合布局区域
+                for (i in (negLayoutTail downTo negLayoutHead)) {
+                    val distance = Math.abs(getRequiredScrollOffset(i) - scrollOffsetY)
+                    if (distance < minDistance) {
+                        minDistance = distance
+                        targetPosition = i
+                    }
+                }
+                if (targetPosition < 0) {
+                    targetPosition = 0
+                }
+            } else if (scrollOffsetY in criticalValue..posLenThreshold) {
+                //纯正序列布局区域
+                for (i in (posLayoutHead..posLayoutTail)) {
+                    val distance = Math.abs(getRequiredScrollOffset(i) - scrollOffsetY)
+                    if (distance < minDistance) {
+                        minDistance = distance
+                        targetPosition = i
+                    }
+                }
+            }
+            startScrollAnimation(targetPosition, itemCount)
+        } else {
+            startScrollAnimation(findClosestItemPosition(), itemCount)
         }
     }
 
@@ -171,7 +336,11 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
      * 获取指定position的Item选中时对应的ScrollOffset值
      */
     private fun getRequiredScrollOffset(targetPosition: Int): Int {
-        return targetPosition * requiredItemHeight
+        return if (scrollOffsetY >= -requiredItemHeight / 2) {
+            targetPosition * requiredItemHeight
+        } else {
+            -(itemCount - targetPosition) * requiredItemHeight
+        }
     }
 
     private fun startScrollAnimation(position: Int, itemCount: Int) {
@@ -225,6 +394,47 @@ class WheelLayoutManager(private val visibleCount: Int) : RecyclerView.LayoutMan
             }
             lastValue = currentValue
         }
+    }
+
+    private fun fixSelection(positionStart: Int, changeLength: Int) {
+        val positionEnd = positionStart + Math.abs(changeLength)
+        var newPosition = selectedPosition
+        if (changeLength > 0) {
+            //添加元素
+            if (selectedPosition >= positionEnd) {
+                newPosition += Math.abs(changeLength)
+            }
+        } else if (changeLength < 0) {
+            //删除元素
+            if (selectedPosition in (positionStart until positionEnd)) {
+                newPosition = if (itemCount - 1 - positionEnd > positionStart) {
+                    positionEnd
+                } else {
+                    positionStart - 1
+                }
+            } else if (selectedPosition >= positionEnd) {
+                newPosition -= Math.abs(changeLength)
+            }
+        }
+        //修正由于Item数量产生变化而scrollOffsetY越界没有重新计算的问题
+        updateScrollOffsetY(0, 0, itemCount)
+        scrollToPosition(newPosition)
+    }
+
+    override fun onItemsAdded(recyclerView: RecyclerView, positionStart: Int, itemCount: Int) {
+        super.onItemsAdded(recyclerView, positionStart, itemCount)
+        fixSelection(positionStart, itemCount)
+    }
+
+    override fun onItemsRemoved(recyclerView: RecyclerView, positionStart: Int, itemCount: Int) {
+        super.onItemsRemoved(recyclerView, positionStart, itemCount)
+        fixSelection(positionStart, -itemCount)
+    }
+
+    override fun onItemsChanged(recyclerView: RecyclerView) {
+        super.onItemsChanged(recyclerView)
+        selectedPosition = 0
+        updateScrollOffsetY(0, 0, itemCount)
     }
 
     private abstract class AnimatorListenerProxy : Animator.AnimatorListener {

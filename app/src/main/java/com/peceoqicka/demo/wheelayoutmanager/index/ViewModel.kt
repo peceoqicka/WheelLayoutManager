@@ -40,4 +40,23 @@ class ViewModel : BaseObservable() {
         }
         @Bindable
         get
+
+    var yearDisplay: Int = 0
+        set(value) {
+            field = value;notifyPropertyChanged(BR.yearDisplay)
+        }
+        @Bindable
+        get
+    var monthDisplay: Int = 0
+        set(value) {
+            field = value;notifyPropertyChanged(BR.monthDisplay)
+        }
+        @Bindable
+        get
+    var dayDisplay: Int = 0
+        set(value) {
+            field = value;notifyPropertyChanged(BR.dayDisplay)
+        }
+        @Bindable
+        get
 }

@@ -4,7 +4,6 @@ import android.databinding.DataBindingUtil
 import android.databinding.ObservableArrayList
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
-import android.support.v7.widget.LinearLayoutManager
 import com.peceoqicka.demo.wheelayoutmanager.databinding.ActivityMainBinding
 import com.peceoqicka.demo.wheelayoutmanager.index.ItemAdapter
 import com.peceoqicka.demo.wheelayoutmanager.index.ItemViewModel
@@ -13,7 +12,6 @@ import com.peceoqicka.demo.wheelayoutmanager.util.color
 import com.peceoqicka.demo.wheelayoutmanager.util.timer
 import com.peceoqicka.wheellayoutmanager.WheelLayoutManager
 import org.jetbrains.anko.dimen
-import java.time.LocalDateTime
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -38,13 +36,13 @@ class MainActivity : AppCompatActivity() {
                     deselectIndex(yearAdapter)
                 }
             }
-            monthLayoutManager = WheelLayoutManager(5).apply {
+            monthLayoutManager = WheelLayoutManager(5, true).apply {
                 selectionChangedListener = this@MainActivity::onMonthSelectionChanged
                 draggingStartListener = {
                     deselectIndex(monthAdapter)
                 }
             }
-            dayLayoutManager = WheelLayoutManager(5).apply {
+            dayLayoutManager = WheelLayoutManager(5, true).apply {
                 selectionChangedListener = this@MainActivity::onDaySelectionChanged
                 draggingStartListener = {
                     deselectIndex(dayAdapter)
@@ -100,6 +98,7 @@ class MainActivity : AppCompatActivity() {
             selectedYear = selectedValue
             onDayChanged()
             selectIndex(bindModel.yearAdapter, position)
+            bindModel.yearDisplay = selectedYear
         }
     }
 
@@ -109,6 +108,7 @@ class MainActivity : AppCompatActivity() {
             selectedMonth = selectedValue
             onDayChanged()
             selectIndex(bindModel.monthAdapter, position)
+            bindModel.monthDisplay = selectedMonth
         }
     }
 
@@ -117,6 +117,7 @@ class MainActivity : AppCompatActivity() {
         if (selectedValue > 0) {
             selectedDay = selectedValue
             selectIndex(bindModel.dayAdapter, position)
+            bindModel.dayDisplay = selectedDay
         }
     }
 
@@ -129,11 +130,8 @@ class MainActivity : AppCompatActivity() {
             bindModel.dayAdapter?.addRange(selectedMaxDayOfMonth + 1, newMaxDayOfMonth)
         } else if (newMaxDayOfMonth < selectedMaxDayOfMonth) {
             val lastMaxDayOfMonth = selectedMaxDayOfMonth
-
-            if (selectedDay > newMaxDayOfMonth) {
-                selectValue(bindModel.dayLayoutManager, bindModel.dayAdapter, newMaxDayOfMonth)
-            }
             bindModel.dayAdapter?.removeRange(newMaxDayOfMonth + 1, lastMaxDayOfMonth)
+            //不应从适配器层面来重新定位选中的元素
         }
         selectedMaxDayOfMonth = newMaxDayOfMonth
     }

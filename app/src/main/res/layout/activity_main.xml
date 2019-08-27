@@ -20,11 +20,11 @@
             android:id="@+id/rv_main_year"
             android:layout_width="0dp"
             android:layout_height="@dimen/px_700"
+            android:layout_marginTop="@dimen/px_200"
             android:background="#F5F5F5"
             android:layoutManager="@{model.yearLayoutManager}"
             app:adapter="@{model.yearAdapter}"
             app:itemDecoration="@{model.yearItemDecoration}"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/rv_main_month"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -37,10 +37,9 @@
             android:layoutManager="@{model.monthLayoutManager}"
             app:adapter="@{model.monthAdapter}"
             app:itemDecoration="@{model.monthItemDecoration}"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/rv_main_day"
             app:layout_constraintStart_toEndOf="@+id/rv_main_year"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="@+id/rv_main_year" />
 
         <android.support.v7.widget.RecyclerView
             android:id="@+id/rv_main_day"
@@ -50,9 +49,46 @@
             android:layoutManager="@{model.dayLayoutManager}"
             app:adapter="@{model.dayAdapter}"
             app:itemDecoration="@{model.dayItemDecoration}"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@+id/rv_main_month"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="@+id/rv_main_year" />
+
+        <android.support.v7.widget.CardView
+            android:id="@+id/cv_main_selection"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/px_300"
+            android:layout_marginStart="@dimen/px_50"
+            android:layout_marginTop="@dimen/px_50"
+            android:layout_marginEnd="@dimen/px_50"
+            app:cardBackgroundColor="#FF424242"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/rv_main_year">
+
+            <android.support.constraint.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <TextView
+                    android:id="@+id/tv_main_label_selection"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/px_45"
+                    android:layout_marginTop="@dimen/px_45"
+                    android:text="@string/selection_date"
+                    android:textColor="#FFFFFF"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/px_45"
+                    android:text="@{@string/selection_date_template(model.yearDisplay,model.monthDisplay,model.dayDisplay)}"
+                    android:textColor="#FFFFFF"
+                    app:layout_constraintStart_toStartOf="@+id/tv_main_label_selection"
+                    app:layout_constraintTop_toBottomOf="@+id/tv_main_label_selection" />
+            </android.support.constraint.ConstraintLayout>
+        </android.support.v7.widget.CardView>
     </android.support.constraint.ConstraintLayout>
 </layout>
