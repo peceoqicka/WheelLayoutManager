@@ -118,11 +118,11 @@ class WheelLayoutManager(private val visibleCount: Int, private val infinity: Bo
                 scrollOffsetY = posLenThreshold - mod
             }
         } else {
-            val overflowHeight = childrenHeight - height
+            val maxOverflowHeight = childrenHeight - requiredItemHeight
             if (scrollOffsetY < 0) {
                 scrollOffsetY = 0
-            } else if (scrollOffsetY > overflowHeight + requiredMarginTop * 2) {
-                scrollOffsetY = if (overflowHeight > 0) overflowHeight + requiredMarginTop * 2 else lastOffsetY
+            } else if (scrollOffsetY > maxOverflowHeight) {
+                scrollOffsetY = if (maxOverflowHeight > 0) maxOverflowHeight else lastOffsetY
             }
         }
     }
@@ -222,7 +222,7 @@ class WheelLayoutManager(private val visibleCount: Int, private val infinity: Bo
         for (i in (0 until itemCount)) {
             val childTop = getLayoutTop(i)
             val childBottom = childTop + requiredItemHeight
-            if ((childTop in 0..height) || childBottom in 0..height) {
+            if (isLayoutInVisibleArea(childTop, childBottom)) {
                 headIndex = i
                 break
             }

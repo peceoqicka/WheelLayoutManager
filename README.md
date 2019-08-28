@@ -27,10 +27,14 @@ recyclerView.layoutManager = WheelLayoutManager(5, false)
 
 ### 参数说明
 * visibleCount 显示的Item数量，必须为大于等于3的奇数
-* infinity 是否为无线循环模式，默认为false 
+* infinity 是否为无限循环模式，默认为false 
 
 ## 更新记录
 
-* 1.0.2 增加无线循环模式
+* 1.0.2 增加无限循环模式
 * 1.0.1 修复快速滚动停止后偏移像素的问题
 * 1.0.0 第一版
+
+## 博客地址
+
+[WheelLayoutManager——自定义轮式布局](https://peceoqicka.github.io/2019/08/27/wheellayoutmanager/)
